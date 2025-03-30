@@ -2,12 +2,16 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import shap
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.pipeline import Pipeline
 
-# Load the trained model
+# Load model
 model = joblib.load("client_retention_model.pkl")
 
+# App title
 st.title("🔄 Client Retention Predictor")
-
 st.write("Predict whether a client is likely to return based on their profile.")
 
 # Input form
@@ -18,8 +22,9 @@ with st.form("prediction_form"):
     sex = st.selectbox("Sex", ['male', 'female'])
     status = st.selectbox("Status", ['new', 'returning', 'inactive'])
     season = st.selectbox("Season", ['Spring', 'Summer', 'Fall', 'Winter'])
-    month = st.selectbox("Month", ['January', 'February', 'March', 'April', 'May', 'June',
-                                   'July', 'August', 'September', 'October', 'November', 'December'])
+    month = st.selectbox("Month", [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'])
     latest_lang_english = st.selectbox("Latest Language is English", ['yes', 'no'])
 
     age = st.slider("Age", 18, 100, 35)
@@ -29,7 +34,7 @@ with st.form("prediction_form"):
 
     submitted = st.form_submit_button("Predict")
 
-# Prepare input and predict
+# Prediction
 if submitted:
     input_df = pd.DataFrame([{
         'contact_method': contact_method,
@@ -55,3 +60,18 @@ if submitted:
         st.success(f"✅ Client is likely to return (Probability: {round(probability, 2)})")
     else:
         st.warning(f"⚠️ Client may not return (Probability: {round(probability, 2)})")
+
+    # SHAP Explanation
+    st.subheader("Model Explanation with SHAP")
+
+    # SHAP explainer on classifier and transformed training data
+    explainer = shap.Explainer(model.named_steps['classifier'],
+                               model.named_steps['preprocessing'].transform(model.named_steps['preprocessing'].feature_names_in_))
+
+    transformed_input = model.named_steps['preprocessing'].transform(input_df)
+    shap_values = explainer(transformed_input)
+
+    # Show waterfall plot
+    st.set_option('deprecation.showPyplotGlobalUse', False)
+    shap.plots.waterfall(shap_values[0], show=False)
+    st.pyplot(bbox_inches='tight')

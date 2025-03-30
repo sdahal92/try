@@ -4,12 +4,10 @@ import pandas as pd
 import joblib
 import shap
 import matplotlib.pyplot as plt
-import numpy as np
 
-# Load the trained model pipeline (preprocessing + classifier)
+# Load trained model (pipeline: preprocessing + classifier)
 model = joblib.load("client_retention_model.pkl")
 
-st.set_page_config(page_title="Client Retention Predictor", layout="centered")
 st.title("🔄 Client Retention Predictor")
 st.write("Predict whether a client is likely to return based on their profile.")
 
@@ -34,8 +32,8 @@ with st.form("prediction_form"):
 
     submitted = st.form_submit_button("Predict")
 
+# Prediction
 if submitted:
-    # Prepare input
     input_df = pd.DataFrame([{
         'contact_method': contact_method,
         'household': household,
@@ -51,7 +49,6 @@ if submitted:
         'num_of_contact_methods': num_of_contact_methods
     }])
 
-    # Predict
     prediction = model.predict(input_df)[0]
     probability = model.predict_proba(input_df)[0][1]
 
@@ -62,22 +59,22 @@ if submitted:
     else:
         st.warning(f"⚠️ Client may not return (Probability: {round(probability, 2)})")
 
-    # SHAP EXPLAINABILITY
+    # SHAP Explanation
     st.markdown("---")
-    st.subheader("Model Explanation with SHAP")
+    st.subheader("📊 Model Explanation with SHAP")
 
+    # Separate pipeline steps
     preprocessor = model.named_steps['preprocessing']
     classifier = model.named_steps['classifier']
 
-    # Transform input
+    # Transform input using preprocessor
     input_transformed = preprocessor.transform(input_df)
 
-    # Create SHAP explainer and calculate values
+    # Create SHAP explainer and compute values
     explainer = shap.Explainer(classifier, input_transformed)
     shap_values = explainer(input_transformed)
 
-    # Plot SHAP waterfall
-    st.set_option('deprecation.showPyplotGlobalUse', False)
+    # Waterfall plot for first instance
     st.write("🔍 SHAP Explanation for this prediction:")
     shap.plots.waterfall(shap_values[0], show=False)
     st.pyplot(bbox_inches='tight')

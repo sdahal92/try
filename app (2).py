@@ -5,12 +5,11 @@ import joblib
 import shap
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.pipeline import Pipeline
 
-# Load model
+# Load the trained model pipeline (preprocessing + classifier)
 model = joblib.load("client_retention_model.pkl")
 
-# App title
+st.set_page_config(page_title="Client Retention Predictor", layout="centered")
 st.title("🔄 Client Retention Predictor")
 st.write("Predict whether a client is likely to return based on their profile.")
 
@@ -24,7 +23,8 @@ with st.form("prediction_form"):
     season = st.selectbox("Season", ['Spring', 'Summer', 'Fall', 'Winter'])
     month = st.selectbox("Month", [
         'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'])
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ])
     latest_lang_english = st.selectbox("Latest Language is English", ['yes', 'no'])
 
     age = st.slider("Age", 18, 100, 35)
@@ -34,8 +34,8 @@ with st.form("prediction_form"):
 
     submitted = st.form_submit_button("Predict")
 
-# Prediction
 if submitted:
+    # Prepare input
     input_df = pd.DataFrame([{
         'contact_method': contact_method,
         'household': household,
@@ -51,6 +51,7 @@ if submitted:
         'num_of_contact_methods': num_of_contact_methods
     }])
 
+    # Predict
     prediction = model.predict(input_df)[0]
     probability = model.predict_proba(input_df)[0][1]
 
@@ -61,17 +62,22 @@ if submitted:
     else:
         st.warning(f"⚠️ Client may not return (Probability: {round(probability, 2)})")
 
-    # SHAP Explanation
+    # SHAP EXPLAINABILITY
+    st.markdown("---")
     st.subheader("Model Explanation with SHAP")
 
-    # SHAP explainer on classifier and transformed training data
-    explainer = shap.Explainer(model.named_steps['classifier'],
-                               model.named_steps['preprocessing'].transform(model.named_steps['preprocessing'].feature_names_in_))
+    preprocessor = model.named_steps['preprocessing']
+    classifier = model.named_steps['classifier']
 
-    transformed_input = model.named_steps['preprocessing'].transform(input_df)
-    shap_values = explainer(transformed_input)
+    # Transform input
+    input_transformed = preprocessor.transform(input_df)
 
-    # Show waterfall plot
+    # Create SHAP explainer and calculate values
+    explainer = shap.Explainer(classifier, input_transformed)
+    shap_values = explainer(input_transformed)
+
+    # Plot SHAP waterfall
     st.set_option('deprecation.showPyplotGlobalUse', False)
+    st.write("🔍 SHAP Explanation for this prediction:")
     shap.plots.waterfall(shap_values[0], show=False)
     st.pyplot(bbox_inches='tight')

@@ -1,5 +1,7 @@
 streamlit
-scikit-learn
 pandas
 joblib
-imbalanced-learn
+scikit-learn
+shap
+matplotlib
+numpy
